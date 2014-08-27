@@ -2,53 +2,76 @@ import java.util.*;
 import java.io.*;
 import java.math.*;
 
-//rank 127
-
 class Player {
 
-    public static void main(String args[]) {
-        Scanner in = new Scanner(System.in);
+    // Constants
+    static final int LEFT = 0;
+    static final int RIGHT = 1;
+    static final int UP = 2;
+    static final int DOWN = 3;
+    static final int DEAD = -1;
 
+    static final int XMIN = 0;
+    static final int XMAX = 29;
+    static final int YMIN = 0;
+    static final int YMAX = 19;
 
-        //contants
-        final int LEFT = 0;
-        final int RIGHT = 1;
-        final int UP = 2;
-        final int DOWN = 3;
+    // Configurations
+    static final int SPACE_COEFF = 20;
+    static final int BOUND_COEFF = 20;
 
-        // Read init information from standard input, if any
-        int players = in.nextInt();
-        int myNumber = in.nextInt();
-        // System.err.println("players is : " + players + " number is : " +myNumber);
-        
-        int counter = 2;
-        int totalPointsPerRound = players*4 + 2;
-        int currentXPosition = 2 + 4 * myNumber + 2;
-        int currentYPosition = 2 + 4 * myNumber + 3;
-        int currentX = 0;
-        int currentY = 0;
-        
-        int oppoX = 0;
-        int oppoY = 0;
-        
-        int leftUp = 150;
-        int leftDown = 150;
-        int rightUp = 150;
-        int rightDown = 150;
-        
-        // Set<String> points = new HashSet<String>();
-        Map<Integer, LinkedHashSet<String>> map = new HashMap<Integer, LinkedHashSet<String>>();
+    //data holders
+    int[] weight = new int[4];  // hold weight value for each position
+    int[][] playGround = new int[30][20];  // hold the play ground
+    Map<Integer, LinkedHashSet<String>> map;
+
+    //indexes
+    int players;
+    int myId;
+
+    int counter;
+    int totalPointsPerRound;
+    int currentXPosition;
+    int currentYPosition;
+    int currentX;
+    int currentY;
+    int oppoX;
+    int oppoY;
+    
+    // split ground into 4 zones, each have 150 points at the beginning
+    int leftUp = 150;
+    int leftDown = 150;
+    int rightUp = 150;
+    int rightDown = 150;
+
+    public void initConfigurations(int p, int id) {
+
+        players = p;
+        myId = id;
+
+        counter = 2;
+        totalPointsPerRound = players*4 + 2;
+        currentXPosition = 2 + 4 * myId + 2;
+        currentYPosition = 2 + 4 * myId + 3;
+        currentX = 0;
+        currentY = 0;
+        oppoX = 0;
+        oppoY = 0;
+
+        map = new HashMap<Integer, LinkedHashSet<String>>();
         for (int i = 0; i < players; i++) {
             map.put(i, new LinkedHashSet<String>());
         }
-        
-        int[][] matrix = new int[30][20];
-        
+
+    }
+
+    public void play(Scanner in) {
+
+        initConfigurations(in.nextInt(), in.nextInt());
+
         int x = 0;
-        int currentPlayer = 0;
-        
-        int[] weight = new int[4];
-        
+        int currentPlayerId = 0;
+
         while (true) {
             
             // Read information from standard input
@@ -72,19 +95,19 @@ class Player {
                     oppoY = n;
                 }
                 
-                System.err.print(n + " ");
+                // store points into playground and player's path
                 if (position%2 == 0) x = n; // is x point
                 else if(position%2 == 1) { // is y point
                 
-                    currentPlayer = (position - 2)/4;
+                    currentPlayerId = (position - 2)/4;
                     if (n < 0) {
-                        map.put(currentPlayer, null);
+                        map.put(currentPlayerId, null);
                     } else {
                         
-                        //store in matrix
-                        matrix[x][n] = 1;
+                        //store in playGround
+                        playGround[x][n] = 1;
                         
-                        Set<String> points = map.get(currentPlayer);
+                        Set<String> points = map.get(currentPlayerId);
                         points.add(x + " " + n);
                         
                         if(position%4 == 0 || position%4 == 1) {
@@ -107,93 +130,86 @@ class Player {
                 // calculate space from neighbours
                 int toLeft = 0;
                 i = currentX-1;
-                while(i>=0 && matrix[i][currentY]==0){
+                while(i>=0 && playGround[i][currentY]==0){
                     toLeft++;
                     i--;
                 }
                 
                 int toRight = 0;
                 i = currentX+1;
-                while(i<=29 && matrix[i][currentY]==0){
+                while(i<=29 && playGround[i][currentY]==0){
                     toRight++;
                     i++;
                 }
                 
                 int toTop = 0;
                 i = currentY-1;
-                while(i>=0 && matrix[currentX][i]==0){
+                while(i>=0 && playGround[currentX][i]==0){
                     toTop++;
                     i--;
                 }
                 
                 int toBottom = 0;
                 i = currentY+1;
-                while(i<=19 && matrix[currentX][i]==0){
+                while(i<=19 && playGround[currentX][i]==0){
                     toBottom++;
                     i++;
                 }
                 
-                // System.err.println("toLeft" + toLeft);
-                // System.err.println("toRight" + toRight);
-                // System.err.println("toTop" + toTop);
-                // System.err.println("toBottom" + toBottom);
+                System.err.println("toLeft" + toLeft);
+                System.err.println("toRight" + toRight);
+                System.err.println("toTop" + toTop);
+                System.err.println("toBottom" + toBottom);
                 
-                // weight[LEFT] += toLeft/5;
-                // weight[RIGHT] += toRight/5;
-                // weight[UP] += toTop/5;
-                // weight[DOWN] += toBottom/5;
+                // add more points to the fastest neighbour
+                weight[LEFT] += toLeft;
+                weight[RIGHT] += toRight;
+                weight[UP] += toTop;
+                weight[DOWN] += toBottom;
                 
-                // System.err.println("current x is " + currentX);
-                // System.err.println("current y is " + currentY);
+                // add space coefficients
+                // always move to a area where there are more points left
+                weight[LEFT] += (leftUp/SPACE_COEFF + leftDown/SPACE_COEFF)/2;
+                weight[RIGHT] += (rightUp/SPACE_COEFF + rightDown/SPACE_COEFF)/2;
+                weight[UP] += (leftUp/SPACE_COEFF + rightUp/SPACE_COEFF)/2;
+                weight[DOWN] += (leftDown/SPACE_COEFF + rightDown/SPACE_COEFF)/2;
                 
-                int spaceCoeff = 40;
+                // Compute weight according to current location
+                // If it's near the boundry, it's better to go to the other two sides
+                if(currentX < XMIN + 4) weight[RIGHT] += BOUND_COEFF;
+                if(currentX > XMAX - 3) weight[LEFT] += BOUND_COEFF;
+                if(currentY < YMIN + 3) weight[DOWN] += BOUND_COEFF;
+                if(currentY > YMAX - 2) weight[UP] += BOUND_COEFF;
                 
-                System.err.println("");
-                System.err.println(leftUp);
-                System.err.println(leftDown);
-                System.err.println(rightUp);
-                System.err.println(rightDown);
-                System.err.println("");
-                
-                // weight[LEFT] += (leftUp/spaceCoeff + leftDown/spaceCoeff)/2;
-                // weight[RIGHT] += (rightUp/spaceCoeff + rightDown/spaceCoeff)/2;
-                // weight[UP] += (leftUp/spaceCoeff + rightUp/spaceCoeff)/2;
-                // weight[DOWN] += (leftDown/spaceCoeff + rightDown/spaceCoeff)/2;
-                
-                //compute weight according to current location
-                int pc = 3;
-                if(currentX < 4) weight[RIGHT] += pc;
-                if(currentX > 26) weight[LEFT] += pc;
-                if(currentY < 3) weight[DOWN] += pc;
-                if(currentY > 17) weight[UP] += pc;
-                
-                if (currentX == 1) {weight[DOWN] += pc; weight[UP] += pc;}
-                if (currentX == 28) {weight[DOWN] += pc; weight[UP] += pc;}
-                if (currentY == 1) {weight[LEFT] += pc; weight[RIGHT] += pc;}
-                if (currentY == 18) {weight[LEFT] += pc; weight[RIGHT] += pc;}
+                if (currentX == XMIN+1) {weight[DOWN] += BOUND_COEFF; weight[UP] += BOUND_COEFF;}
+                if (currentX == XMAX-1) {weight[DOWN] += BOUND_COEFF; weight[UP] += BOUND_COEFF;}
+                if (currentY == YMIN+1) {weight[LEFT] += BOUND_COEFF; weight[RIGHT] += BOUND_COEFF;}
+                if (currentY == YMAX-1) {weight[LEFT] += BOUND_COEFF; weight[RIGHT] += BOUND_COEFF;}
                 
                 // test boundries condition
-                if (currentX == 0) weight[LEFT] = -1;
-                if (currentX == 29) weight[RIGHT] = -1;
-                if (currentY == 0) weight[UP] = -1;
-                if (currentY == 19) weight[DOWN] = -1;
+                // If it's wall, don't go there
+                if (currentX == XMIN) weight[LEFT] = DEAD;
+                if (currentX == XMAX) weight[RIGHT] = DEAD;
+                if (currentY == YMIN) weight[UP] = DEAD;
+                if (currentY == YMAX) weight[DOWN] = DEAD;
                 
                 // test occupied neighbours
+                // If it's wall, don't go there (null means the player is dead)
                 for (i = 0; i < players; i++) {
                     Set<String> points = map.get(i);
-                    System.err.println(points);
+                    // System.err.println(points);
                     if (points != null) {
-                        if (points.contains((currentX - 1) + " " + currentY )) weight[LEFT] = -1;
-                        if (points.contains((currentX + 1) + " " + currentY )) weight[RIGHT] = -1;
-                        if (points.contains(currentX + " " + (currentY - 1) )) weight[UP] = -1;
-                        if (points.contains(currentX + " " + (currentY + 1) )) weight[DOWN] = -1;
+                        if (points.contains((currentX - 1) + " " + currentY )) weight[LEFT] = DEAD;
+                        if (points.contains((currentX + 1) + " " + currentY )) weight[RIGHT] = DEAD;
+                        if (points.contains(currentX + " " + (currentY - 1) )) weight[UP] = DEAD;
+                        if (points.contains(currentX + " " + (currentY + 1) )) weight[DOWN] = DEAD;
                     }
                 }
                 
                 // Random ran = new Random();
                 // int nextStep = ran.nextInt(4);
                 
-                // find the max weight
+                // find the direction who has the maximum weight
                 int step = 0;
                 int maxWeight = -1;
                 for(i= 0; i < weight.length; i++) {
@@ -205,7 +221,7 @@ class Player {
                     weight[i] = 0;
                 }
                 
-                //print action
+                //print action to output
                 switch(step){
                     case LEFT:System.out.println("LEFT");break;
                     case RIGHT:System.out.println("RIGHT");break;
@@ -213,15 +229,19 @@ class Player {
                     case DOWN:System.out.println("DOWN");break;
                 }
                 
-                // if (left) System.out.println("LEFT");
-                // else if (right) System.out.println("RIGHT");
-                // else if (down) System.out.println("DOWN");
-                // else if (up) System.out.println("UP");
-                // else System.out.println("LEFT");
-                
             }
         }
-        
+
+    }
+
+    public static void main(String args[]) {
+
+        // Read init information from standard input, if any
+        Scanner in = new Scanner(System.in);
+
+        // init player and play
+        Player p = new Player();
+        p.play(in);
         
     }
 }
