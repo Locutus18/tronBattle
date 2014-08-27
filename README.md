@@ -44,6 +44,8 @@ v1.0: 130
 v1.1: 127   
 v1.2: 122   
 
+![LeaderBoard](https://dl.dropboxusercontent.com/u/38395876/LeaderBoard.png)
+
 To improve ... :(
     
 
