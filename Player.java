@@ -65,6 +65,114 @@ class Player {
 
     }
 
+    public void computeAction(){
+
+        int i = 0;
+                
+        // calculate space from neighbours
+        int toLeft = 0;
+        i = currentX-1;
+        while(i>=0 && playGround[i][currentY]==0){
+            toLeft++;
+            i--;
+        }
+        
+        int toRight = 0;
+        i = currentX+1;
+        while(i<=29 && playGround[i][currentY]==0){
+            toRight++;
+            i++;
+        }
+        
+        int toTop = 0;
+        i = currentY-1;
+        while(i>=0 && playGround[currentX][i]==0){
+            toTop++;
+            i--;
+        }
+        
+        int toBottom = 0;
+        i = currentY+1;
+        while(i<=19 && playGround[currentX][i]==0){
+            toBottom++;
+            i++;
+        }
+        
+        System.err.println("toLeft" + toLeft);
+        System.err.println("toRight" + toRight);
+        System.err.println("toTop" + toTop);
+        System.err.println("toBottom" + toBottom);
+        
+        // add more points to the fastest neighbour
+        weight[LEFT] += toLeft;
+        weight[RIGHT] += toRight;
+        weight[UP] += toTop;
+        weight[DOWN] += toBottom;
+        
+        // add space coefficients
+        // always move to a area where there are more points left
+        weight[LEFT] += (leftUp/SPACE_COEFF + leftDown/SPACE_COEFF)/2;
+        weight[RIGHT] += (rightUp/SPACE_COEFF + rightDown/SPACE_COEFF)/2;
+        weight[UP] += (leftUp/SPACE_COEFF + rightUp/SPACE_COEFF)/2;
+        weight[DOWN] += (leftDown/SPACE_COEFF + rightDown/SPACE_COEFF)/2;
+        
+        // Compute weight according to current location
+        // If it's near the boundry, it's better to go to the other two sides
+        if(currentX < XMIN + 3) weight[RIGHT] += BOUND_COEFF;
+        if(currentX > XMAX - 3) weight[LEFT] += BOUND_COEFF;
+        if(currentY < YMIN + 2) weight[DOWN] += BOUND_COEFF;
+        if(currentY > YMAX - 2) weight[UP] += BOUND_COEFF;
+        
+        if (currentX == XMIN+1) {weight[DOWN] += BOUND_COEFF; weight[UP] += BOUND_COEFF;}
+        if (currentX == XMAX-1) {weight[DOWN] += BOUND_COEFF; weight[UP] += BOUND_COEFF;}
+        if (currentY == YMIN+1) {weight[LEFT] += BOUND_COEFF; weight[RIGHT] += BOUND_COEFF;}
+        if (currentY == YMAX-1) {weight[LEFT] += BOUND_COEFF; weight[RIGHT] += BOUND_COEFF;}
+        
+        // test boundries condition
+        // If it's wall, don't go there
+        if (currentX == XMIN) weight[LEFT] = DEAD;
+        if (currentX == XMAX) weight[RIGHT] = DEAD;
+        if (currentY == YMIN) weight[UP] = DEAD;
+        if (currentY == YMAX) weight[DOWN] = DEAD;
+        
+        // test walls
+        // If it's wall, don't go there (null means the player is dead)
+        for (i = 0; i < players; i++) {
+            Set<String> points = map.get(i);
+            // System.err.println(points);
+            if (points != null) {
+                if (points.contains((currentX - 1) + " " + currentY )) weight[LEFT] = DEAD;
+                if (points.contains((currentX + 1) + " " + currentY )) weight[RIGHT] = DEAD;
+                if (points.contains(currentX + " " + (currentY - 1) )) weight[UP] = DEAD;
+                if (points.contains(currentX + " " + (currentY + 1) )) weight[DOWN] = DEAD;
+            }
+        }
+        
+        // Random ran = new Random();
+        // int nextStep = ran.nextInt(4);
+        
+        // find the direction who has the maximum weight
+        int step = 0;
+        int maxWeight = -1;
+        for(i= 0; i < weight.length; i++) {
+            System.err.println("weight "+ i +" is " + weight[i]);
+            if (weight[i] > maxWeight) {
+                step = i; 
+                maxWeight = weight[i];
+            }
+            weight[i] = 0;
+        }
+        
+        //print action to output
+        switch(step){
+            case LEFT:System.out.println("LEFT");break;
+            case RIGHT:System.out.println("RIGHT");break;
+            case UP:System.out.println("UP");break;
+            case DOWN:System.out.println("DOWN");break;
+        }
+
+    }
+
     public void play(Scanner in) {
 
         initConfigurations(in.nextInt(), in.nextInt());
@@ -124,111 +232,10 @@ class Player {
 
             // Write action to standard output if it's the end
             if(counter%totalPointsPerRound == 0) {
-                
-                int i = 0;
-                
-                // calculate space from neighbours
-                int toLeft = 0;
-                i = currentX-1;
-                while(i>=0 && playGround[i][currentY]==0){
-                    toLeft++;
-                    i--;
-                }
-                
-                int toRight = 0;
-                i = currentX+1;
-                while(i<=29 && playGround[i][currentY]==0){
-                    toRight++;
-                    i++;
-                }
-                
-                int toTop = 0;
-                i = currentY-1;
-                while(i>=0 && playGround[currentX][i]==0){
-                    toTop++;
-                    i--;
-                }
-                
-                int toBottom = 0;
-                i = currentY+1;
-                while(i<=19 && playGround[currentX][i]==0){
-                    toBottom++;
-                    i++;
-                }
-                
-                System.err.println("toLeft" + toLeft);
-                System.err.println("toRight" + toRight);
-                System.err.println("toTop" + toTop);
-                System.err.println("toBottom" + toBottom);
-                
-                // add more points to the fastest neighbour
-                weight[LEFT] += toLeft;
-                weight[RIGHT] += toRight;
-                weight[UP] += toTop;
-                weight[DOWN] += toBottom;
-                
-                // add space coefficients
-                // always move to a area where there are more points left
-                weight[LEFT] += (leftUp/SPACE_COEFF + leftDown/SPACE_COEFF)/2;
-                weight[RIGHT] += (rightUp/SPACE_COEFF + rightDown/SPACE_COEFF)/2;
-                weight[UP] += (leftUp/SPACE_COEFF + rightUp/SPACE_COEFF)/2;
-                weight[DOWN] += (leftDown/SPACE_COEFF + rightDown/SPACE_COEFF)/2;
-                
-                // Compute weight according to current location
-                // If it's near the boundry, it's better to go to the other two sides
-                if(currentX < XMIN + 4) weight[RIGHT] += BOUND_COEFF;
-                if(currentX > XMAX - 3) weight[LEFT] += BOUND_COEFF;
-                if(currentY < YMIN + 3) weight[DOWN] += BOUND_COEFF;
-                if(currentY > YMAX - 2) weight[UP] += BOUND_COEFF;
-                
-                if (currentX == XMIN+1) {weight[DOWN] += BOUND_COEFF; weight[UP] += BOUND_COEFF;}
-                if (currentX == XMAX-1) {weight[DOWN] += BOUND_COEFF; weight[UP] += BOUND_COEFF;}
-                if (currentY == YMIN+1) {weight[LEFT] += BOUND_COEFF; weight[RIGHT] += BOUND_COEFF;}
-                if (currentY == YMAX-1) {weight[LEFT] += BOUND_COEFF; weight[RIGHT] += BOUND_COEFF;}
-                
-                // test boundries condition
-                // If it's wall, don't go there
-                if (currentX == XMIN) weight[LEFT] = DEAD;
-                if (currentX == XMAX) weight[RIGHT] = DEAD;
-                if (currentY == YMIN) weight[UP] = DEAD;
-                if (currentY == YMAX) weight[DOWN] = DEAD;
-                
-                // test occupied neighbours
-                // If it's wall, don't go there (null means the player is dead)
-                for (i = 0; i < players; i++) {
-                    Set<String> points = map.get(i);
-                    // System.err.println(points);
-                    if (points != null) {
-                        if (points.contains((currentX - 1) + " " + currentY )) weight[LEFT] = DEAD;
-                        if (points.contains((currentX + 1) + " " + currentY )) weight[RIGHT] = DEAD;
-                        if (points.contains(currentX + " " + (currentY - 1) )) weight[UP] = DEAD;
-                        if (points.contains(currentX + " " + (currentY + 1) )) weight[DOWN] = DEAD;
-                    }
-                }
-                
-                // Random ran = new Random();
-                // int nextStep = ran.nextInt(4);
-                
-                // find the direction who has the maximum weight
-                int step = 0;
-                int maxWeight = -1;
-                for(i= 0; i < weight.length; i++) {
-                    System.err.println("weight i is " + weight[i]);
-                    if (weight[i] > maxWeight) {
-                        step = i; 
-                        maxWeight = weight[i];
-                    }
-                    weight[i] = 0;
-                }
-                
-                //print action to output
-                switch(step){
-                    case LEFT:System.out.println("LEFT");break;
-                    case RIGHT:System.out.println("RIGHT");break;
-                    case UP:System.out.println("UP");break;
-                    case DOWN:System.out.println("DOWN");break;
-                }
-                
+
+                // compute scores and print action
+                computeAction();
+
             }
         }
 
