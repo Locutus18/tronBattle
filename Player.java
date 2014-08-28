@@ -6,10 +6,19 @@ class Dir implements Comparable<Dir>{
 
     int code;
     Player player;
+    int controlledPoints;
 
     public Dir(int theCode, Player thePlayer) {
         code = theCode;
         player = thePlayer;
+    }
+
+    public int getControlledPoints(){
+        return controlledPoints;
+    }
+
+    public void setControlledPoints(int c){
+        controlledPoints = c;
     }
 
     public int compareTo(Dir d) {
@@ -22,10 +31,14 @@ class Dir implements Comparable<Dir>{
             else return -1;
         }
 
-
         // go to direction that has maximum free points
         if (player.futureful(code) != player.futureful(d.code)) {
             return player.futureful(code) - player.futureful(d.code);
+        }
+
+        // attack: always try to maximum controlled points
+        if (controlledPoints != d.getControlledPoints()) {
+            return controlledPoints - d.getControlledPoints();
         }
 
         // go to the area where there are more free points
@@ -103,6 +116,18 @@ class Player {
     int toTop = 0;
     int toBottom = 0;
 
+    public int getCurrentX(){
+        return currentX;
+    }
+
+    public int getCurrentY(){
+        return currentY;
+    }
+
+    public int[][] getPlayGround(){
+        return playGround;
+    }
+
     public void initConfigurations(int p, int id) {
 
         players = p;
@@ -120,6 +145,73 @@ class Player {
         map = new HashMap<Integer, LinkedHashSet<String>>();
         for (int i = 0; i < players; i++) {
             map.put(i, new LinkedHashSet<String>());
+        }
+
+    }
+
+    // calculate controlled points for each direction
+    public void predictControlledPoints(){
+
+        int x = currentX;
+        int y = currentY;
+        
+        // switch(code){
+        //     case LEFT: x--;break;
+        //     case RIGHT: x++;break;
+        //     case UP: y--;break;
+        //     case DOWN: y++;break;
+        // }
+
+        int[] pointCounter = new int[4]; // store controlled points for each direction
+        int myDistance = 0;
+        int p = 0;
+        for(int i = 0; i < XMAX; i++){
+            for (int j = 0; j < YMAX; j++) {
+                if(playGround[i][j] == 0){ // only check free points
+
+                    // to left
+                    myDistance = computeDistance(x-1, y, i, j);
+                    for(p = 0; p < players; p++){
+                        if(p != myId){
+                            if(myDistance > computeDistance(opponentPositions[p*2], opponentPositions[p*2+1], i, j)) break;
+                        }
+                    }
+                    if (p == players) pointCounter[LEFT]++;
+
+                    // to right
+                    myDistance = computeDistance(x+1, y, i, j);
+                    for(p = 0; p < players; p++){
+                        if(p != myId){
+                            if(myDistance > computeDistance(opponentPositions[p*2], opponentPositions[p*2+1], i, j)) break;
+                        }
+                    }
+                    if (p == players) pointCounter[RIGHT]++;
+
+                    // to top
+                    myDistance = computeDistance(x, y-1, i, j);
+                    for(p = 0; p < players; p++){
+                        if(p != myId){
+                            if(myDistance > computeDistance(opponentPositions[p*2], opponentPositions[p*2+1], i, j)) break;
+                        }
+                    }
+                    if (p == players) pointCounter[UP]++;
+
+                    // to bottom
+                    myDistance = computeDistance(x, y+1, i, j);
+                    for(p = 0; p < players; p++){
+                        if(p != myId){
+                            if(myDistance > computeDistance(opponentPositions[p*2], opponentPositions[p*2+1], i, j)) break;
+                        }
+                    }
+                    if (p == players) pointCounter[DOWN]++;
+                }
+            }
+        }
+
+        // set points
+        for(int i = 0; i < 4; i++){
+            System.err.println("Controlled points is " + pointCounter[i]);
+            directions[i].setControlledPoints(pointCounter[i]);
         }
 
     }
@@ -184,7 +276,6 @@ class Player {
     }
 
     public void computeAction(){
-    
 
         int i = 0;
                 
@@ -281,6 +372,8 @@ class Player {
             }
             weight[i] = 0;
         }
+
+        predictControlledPoints();
 
         //sort directions
         System.err.println("");
