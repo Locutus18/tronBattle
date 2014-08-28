@@ -6,11 +6,38 @@ class Dir implements Comparable<Dir>{
 
     int code;
     Player player;
+    int defendedPoints;
     int controlledPoints;
+    int distanceToNearest;
+    int distanceToFarest;
 
     public Dir(int theCode, Player thePlayer) {
         code = theCode;
         player = thePlayer;
+    }
+
+    public int getDistanceToFarest(){
+        return distanceToFarest;
+    }
+
+    public void setDistanceToFarest(int d){
+        distanceToFarest = d;
+    }
+
+    public int getDistanceToNearest(){
+        return distanceToNearest;
+    }
+
+    public void setDistanceToNearest(int d){
+        distanceToNearest = d;
+    }
+
+    public int getDefendedPoints(){
+        return defendedPoints;
+    }
+
+    public void setDefendedPoints(int p){
+        defendedPoints = p;
     }
 
     public int getControlledPoints(){
@@ -30,10 +57,15 @@ class Dir implements Comparable<Dir>{
             if(player.isSafe(code)) return 1;
             else return -1;
         }
-
+        
         // go to direction that has maximum free points
         if (player.futureful(code) != player.futureful(d.code)) {
             return player.futureful(code) - player.futureful(d.code);
+        }
+
+        // go to the area where there are more free points
+        if (player.selfish(code) != player.selfish(d.code)) {
+            return player.selfish(code) - player.selfish(d.code);
         }
 
         // attack: always try to maximum controlled points
@@ -41,9 +73,22 @@ class Dir implements Comparable<Dir>{
             return controlledPoints - d.getControlledPoints();
         }
 
-        // go to the area where there are more free points
-        if (player.selfish(code) != player.selfish(d.code)) {
-            return player.selfish(code) - player.selfish(d.code);
+
+        // go away from nearest opponent
+        if (distanceToNearest != d.getDistanceToNearest()) {
+            return d.getDistanceToNearest() - distanceToNearest;
+        }
+
+        // go to the farest opponent
+        if (distanceToFarest != d.getDistanceToFarest()) {
+            return distanceToFarest - d.getDistanceToFarest();
+        }
+
+        
+
+        // go to boundries if possible
+        if(player.distanceToBoundary(code) != player.distanceToBoundary(d.code)) {
+            return player.distanceToBoundary(d.code) - player.distanceToBoundary(code);
         }
 
 
@@ -149,18 +194,65 @@ class Player {
 
     }
 
+    public int distanceToBoundary(int code){
+        int distance = 0;
+        switch(code){
+            case LEFT: distance = Math.abs(currentX - XMIN);break;
+            case RIGHT: distance = Math.abs(currentX - XMAX);break;
+            case UP: distance = Math.abs(currentX - YMIN);break;
+            case DOWN: distance = Math.abs(currentX - YMAX);break;
+        }
+        return distance;
+    }
+
+    // calculate defended points for each direction
+    public void predictDistanceToOpponents(){
+
+        int x = currentX;
+        int y = currentY;
+
+        int nearestId = myId;
+        int farestId = myId;
+
+        int maxDistance = Integer.MIN_VALUE;
+        int minDistance = Integer.MAX_VALUE;
+        int distance = 0;
+
+        for(int i = 0; i < players; i++) {
+            if(i != myId) {
+                distance = computeDistance(x, y, opponentPositions[i*2], opponentPositions[i*2+1]);
+                if(distance < minDistance) {
+                    minDistance = distance;
+                    nearestId = i;
+                }
+
+                if( distance > maxDistance ) {
+                    maxDistance = distance;
+                    farestId = i;
+                } 
+            }
+        }
+
+        // distance to nearest
+        directions[LEFT].setDistanceToNearest(computeDistance(x-1, y, opponentPositions[nearestId*2], opponentPositions[nearestId*2+1]));
+        directions[RIGHT].setDistanceToNearest(computeDistance(x+1, y, opponentPositions[nearestId*2], opponentPositions[nearestId*2+1]));
+        directions[UP].setDistanceToNearest(computeDistance(x, y-1, opponentPositions[nearestId*2], opponentPositions[nearestId*2+1]));
+        directions[DOWN].setDistanceToNearest(computeDistance(x, y+1, opponentPositions[nearestId*2], opponentPositions[nearestId*2+1]));
+
+        // distance to farest
+        directions[LEFT].setDistanceToNearest(computeDistance(x-1, y, opponentPositions[farestId*2], opponentPositions[farestId*2+1]));
+        directions[RIGHT].setDistanceToNearest(computeDistance(x+1, y, opponentPositions[farestId*2], opponentPositions[farestId*2+1]));
+        directions[UP].setDistanceToNearest(computeDistance(x, y-1, opponentPositions[farestId*2], opponentPositions[farestId*2+1]));
+        directions[DOWN].setDistanceToNearest(computeDistance(x, y+1, opponentPositions[farestId*2], opponentPositions[farestId*2+1]));
+
+
+    }
+
     // calculate controlled points for each direction
     public void predictControlledPoints(){
 
         int x = currentX;
         int y = currentY;
-        
-        // switch(code){
-        //     case LEFT: x--;break;
-        //     case RIGHT: x++;break;
-        //     case UP: y--;break;
-        //     case DOWN: y++;break;
-        // }
 
         int[] pointCounter = new int[4]; // store controlled points for each direction
         int myDistance = 0;
@@ -373,6 +465,7 @@ class Player {
             weight[i] = 0;
         }
 
+        predictDistanceToOpponents();
         predictControlledPoints();
 
         //sort directions
